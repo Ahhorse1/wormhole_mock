@@ -1,21 +1,36 @@
 from collections import defaultdict
 
 UINT256_MAX = (1 << 256) - 1
+
 class SafeERC20:
     def __init__(self):
         self._totalSupply = 0
         self._balances = defaultdict(int)
-        self._allowances = defaultdict(defaultdict(int))
+        self._allowances = defaultdict(lambda: defaultdict(int))
         self._msgSender = '0x0'
         self._name = None
         self._symbol = None
+        self.decimal = 18
 
     def constructor(self, name=None, symbol=None):
         self._name = name
         self._symbol = symbol
 
     def decimals(self) -> int:
-        return 18
+        return self.decimal
+    
+    def set_decimals(self, decimal):
+        self.decimal = decimal
+    
+    def set_msgSender(self, address):
+        self._msgSender = address
+
+    def set_balance(self, address, balance):
+        self._totalSupply += balance
+        self._balances[address] = balance
+    
+    def set_allowances(self, owner, spender, balance):
+        self._allowances[owner][spender] = balance
 
     def balanceOf(self, address):
         return self._balances[address]
@@ -39,8 +54,8 @@ class SafeERC20:
     def transferFrom(self, from_address, to_address, value):
         # address sender = _msgSender();
         spender = self._msgSender
-        assert self._spendAllowance(from_address, spender, value) != False
-        assert self._transfer(from_address, to_address, value) != False
+        assert self._spendAllowance(from_address, spender, value) != False, 'spendAllowance Error'
+        assert self._transfer(from_address, to_address, value) != False, 'transfer Error'
 
         return True
     
@@ -51,7 +66,7 @@ class SafeERC20:
                 print(f'Insufficient Allowance {spender}, {currentAllowance}, {value}')
                 return False
             else:
-                self._approve(owner, spender, currentAllowance - value, False)
+                self._approve(owner, spender, currentAllowance - value)
 
     def _transfer(self, from_address, to_address, value):
         if from_address == '0x0':
@@ -77,7 +92,7 @@ class SafeERC20:
         else:
             self._balances[to_address] += value
 
-        print(f'\n Emitting Transfer Event {from_address}, {to_address}, {value}')
+        print(f'\nEmitting Transfer Event {from_address}, {to_address}, {value}\n')
         return True
     
     def _burn(self, account, value):
@@ -94,7 +109,7 @@ class SafeERC20:
         
         return self._update('0x0', account, value)
     
-    def _approve(self, owner, spender, value, emitEvent):
+    def _approve(self, owner, spender, value):
         if owner == '0x0':
             print('Invalid Approver')
             return False
@@ -103,8 +118,7 @@ class SafeERC20:
             return False
         self._allowances[owner][spender] = value
 
-        if emitEvent:
-            print(f'\n Emitting Approval Event {owner}, {spender}, {value}')
+        print(f'\nEmitting Approval Event {owner}, {spender}, {value}\n')
 
         return True
     

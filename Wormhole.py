@@ -4,14 +4,24 @@ from SafeERC20 import SafeERC20
 class Contract:
     def __init__(self):
         self.wrappedAssets = defaultdict(bool)
-        self
         self.chainID = 2
-        self.decimal = 18
-        self.balance_before = 1296037968379177100000000000
-        self.balance_after = 1296038968379177100000000000
+        self.address = '0x3ee18B2214AFF97000D974cf647E7C347E8fa585'.lower()
+        self.msg_sender = '0x5bd1b6b7ec91eb8b21e9e7349c6d4bebf0078435'.lower()
         self.msg_value = 0
-        self.finality = 1
+        self.finality = 0
+
+        self.ERC20_Tokens = defaultdict(SafeERC20)
+
+        SmarDex = SafeERC20()
+        SmarDex.constructor('SmarDex', 'SDEX')
+        SmarDex.set_balance('0x5Bd1b6b7EC91eb8B21e9e7349c6d4BebF0078435'.lower(), 38012880422754149229822)
+        SmarDex.set_balance('0x3ee18B2214AFF97000D974cf647E7C347E8fa585'.lower(), 1296037968379177100000000000)
+        SmarDex.set_allowances('0x5Bd1b6b7EC91eb8B21e9e7349c6d4BebF0078435'.lower(), '0x3ee18B2214AFF97000D974cf647E7C347E8fa585'.lower(), 38012880422754149229822)
+        SmarDex.set_msgSender('0x3ee18b2214aff97000d974cf647e7c347e8fa585'.lower())
+
+        self.ERC20_Tokens['0x5DE8ab7E27f6E7A1fFf3E5B337584Aa43961BEeF'.lower()] = SmarDex
     
+    # https://etherscan.io/tx/0x00718350702d0f67f0d3090bdf2f8564cfa8927f749dffcf87688b348223eeae
     def transferTokens(self, token, amount, recipientChain, recipient, arbiterFee, nonce) -> int:
         transferResult = self._transferTokens(token, amount, arbiterFee)
         sequence = self.logTransfer(transferResult['tokenChain'], transferResult['tokenAddress'], transferResult['normalizedAmount'], recipientChain, recipient, transferResult['normalizedArbiterFee'], transferResult['wormholeFee'], nonce);
@@ -29,32 +39,37 @@ class Contract:
         print('Querying Token\'s decimals()')
         # (,bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
         # uint8 decimals = abi.decode(queriedDecimals, (uint8));
-        decimals = self.decimal
+        decimals = self.ERC20_Tokens[token.lower()].decimals()
         amount = self.deNormalizeAmount(self.normalizeAmount(amount, decimals), decimals)
 
         if tokenChain == self.chainID:
 
-            print('Querying Balance Before')
+            # print('Querying Balance Before')
             # (,bytes memory queriedBalanceBefore) = token.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
             # uint256 balanceBefore = abi.decode(queriedBalanceBefore, (uint256));
-            balanceBefore = self.balance_before
+            balanceBefore = self.ERC20_Tokens[token.lower()].balanceOf(self.address)
 
-            print('Transferring Tokens') # TODO
+            # print('Transferring Tokens') # TODO
             # SafeERC20.safeTransferFrom(IERC20(token), msg.sender, address(this), amount);
+            self.ERC20_Tokens[token.lower()].safeTransferFrom(token, self.msg_sender, self.address, amount)
 
-            print('Querying Balance After')
+            # print('Querying Balance After')
             # (,bytes memory queriedBalanceAfter) = token.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)));
             # uint256 balanceAfter = abi.decode(queriedBalanceAfter, (uint256));
-            balanceAfter = self.balance_after
+            balanceAfter = self.ERC20_Tokens[token.lower()].balanceOf(self.address)
 
             amount = balanceAfter - balanceBefore
         else:
-            print('Transfering Tokens')
+            # print('Transfering Tokens')
             # SafeERC20.safeTransferFrom(IERC20(token), msg.sender, address(this), amount);
+            self.ERC20_Tokens[token.lower()].safeTransferFrom(token, self.msg_sender, self.address, amount)
 
-            print('Burning Tokens')
+            # print('Burning Tokens')
             # TokenImplementation(token).burn(address(this), amount); # TODO: burn to address x
-        
+            self.ERC20_Tokens[token.lower()]._burn(self.address, amount)
+
+            # tokens are wrapped and their collateral is being withdrew from the other side so these tokens are no longer backed by anything
+
         normalizedAmount = self.normalizeAmount(amount, decimals)
         normalizedArbiterFee = self.normalizeAmount(arbiterFee, decimals)
 
@@ -135,20 +150,3 @@ class Contract:
         encode += string.rjust(64, '0')
 
         return encode
-    
-# struct VM {
-# 	uint8 version;
-# 	uint32 timestamp;
-# 	uint32 nonce;
-# 	uint16 emitterChainId;
-# 	bytes32 emitterAddress;
-# 	uint64 sequence;
-# 	uint8 consistencyLevel;
-# 	bytes payload;
-
-# 	uint32 guardianSetIndex;
-# 	Signature[] signatures;
-
-# 	bytes32 hash;
-# }
-
