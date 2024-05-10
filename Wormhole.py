@@ -1,7 +1,14 @@
 from collections import defaultdict
 from SafeERC20 import SafeERC20
+from BytesLib import BytesLib
+from Crypto.Hash import keccak
 
 MAX_UINT64 = (1 << 64) - 1
+
+def keccak256(data):
+    hash_object = keccak.new(digest_bits=256)
+    hash_object.update(data)
+    return hash_object.hexdigest()
 
 class Contract:
     def __init__(self):
@@ -14,6 +21,9 @@ class Contract:
 
         self._state = defaultdict()
         self._state['outstandingBridged'] = defaultdict(int)
+        self._state['bridgeContracts'] = defaultdict(int)
+
+        self._state['bridgeContracts'][]
 
         self.ERC20_Tokens = defaultdict(SafeERC20)
 
@@ -100,6 +110,9 @@ class Contract:
             amount *= 10 ** (decimals - 8)
         
         return amount
+    
+    def bridgeIn(self, token, normalizedAmount):
+        self.setOutstandingBridge(token, self.outstandingBridged(token) - normalizedAmount)
 
     def bridgeOut(self, token, normalizedAmount):
         outstandingAmount = self.outstandingBridged(token)
@@ -155,3 +168,176 @@ class Contract:
         encode += string.rjust(64, '0')
 
         return encode
+
+    def completeTransfer(self, encodedVM):
+        self._completeTransfer(encodedVM, False)
+
+    def _completeTransfer(self, encodedVM, unwrapWETH):
+        vm, valid, reason = self.parseAndVerifyVM(encodedVM)
+
+        assert valid, reason
+        assert self.verifyBridge(vm), "invalid emitter"
+
+        transfer = self._parseCommonTransfer(vm['payload'])
+
+        transferRecipient = self._truncateAddress(transfer['to'])
+
+        if transfer['payloadID'] == 3:
+            assert self.msg_sender == transferRecipient, "Invalid Sender"
+        
+        assert not self.isTransferCompleted(vm['hash']), "Transfer Already Completed"
+        self.setTransferCompleted(vm['hash'])
+
+        self.TransferRedeemed(vm['chainID'], vm['emitterAddress'], vm['sequence'])
+
+        assert transfer['toChain'] == self.chainID, 'Invalid Target Chain'
+
+        transferToken = None
+        if transfer['tokenChain'] == self.chainID:
+            transferToken = self._truncateAddress(transfer['tokenAddress'])
+
+            self.bridgeIn(transferToken, transfer['amount'])
+        else:
+            # It is a wrapped asset, so it will need to be minted
+
+            # address wrapped = wrappedAsset(transfer.tokenChain, transfer.tokenAddress);
+            # require(wrapped != address(0), "no wrapper for this token created yet");
+
+            # transferToken = IERC20(wrapped);
+            print('Wrapped Asset')
+        
+        # TODO:: if querying decimals, need to make an ERC20 Token
+        decimals = 18
+
+        nativeAmount = self.deNormalizeAmount(transfer['amount'], decimals)
+        nativeFee = self.deNormalizeAmount(transfer['fee'], decimals)
+
+        if nativeFee > 0 and transferRecipient != self.msg_sender:
+            
+            assert nativeFee <= nativeAmount, 'Fee higher than Transferred Amount'
+
+            if unwrapWETH:
+                # transfer fee to msg.sender
+                print(f'Transferring Fee to {self.msg_sender}')
+
+                # WETH().withdraw(nativeFee);
+                # payable(msg.sender).transfer(nativeFee);
+
+            else:
+                if transfer['tokenChain'] != self.chainID:
+                    print('Minting Wrapped Asset')
+                    # TokenImplementation(address(transferToken)).mint(msg.sender, nativeFee);
+
+                else:
+                    print(f'Transferring Native Token {transferToken}')
+                    # SafeERC20.safeTransfer(transferToken, msg.sender, nativeFee);
+        else:
+            nativeFee = 0
+        
+        transferAmount = nativeAmount - nativeFee
+
+        if unwrapWETH:
+            # transfer ETH to recipient
+            print(f'Transferring {transferAmount} ETH to {transferRecipient}')
+            
+            # WETH().withdraw(transferAmount);
+            # payable(transferRecipient).transfer(transferAmount);
+        
+        else:
+            if transfer['tokenChain'] != self.chainID:
+                print('Minting Wrapped Asset')
+                # TokenImplementation(address(transferToken)).mint(transferRecipient, transferAmount);
+            
+            else:
+                print(f'Transferring Native Token {transferToken}')
+                # SafeERC20.safeTransfer(transferToken, transferRecipient, transferAmount);
+
+
+
+    def parseAndVerifyVM(self, encodedVM):
+        vm = self.parseVM(encodedVM)
+        (valid, reason) = self.verifyVMInternal(vm, False)
+
+        return vm, valid, reason
+
+    def parseVM(self, encodedVM):
+        vm = {}
+        index = 0
+
+        vm['version'] = BytesLib.toUint8(encodedVM, index)
+        index += 2
+
+        vm['guardianSetIndex'] = BytesLib.toUint32(encodedVM, index)
+        index += 8
+
+        signersLen = BytesLib.toUint8(encodedVM, index)
+        index += 2
+
+        signatures = []
+        for i in range(signersLen):
+            guardianIndex = BytesLib.toUint8(encodedVM, index)
+            index += 2
+
+            r = BytesLib.toBytes32(encodedVM, index)
+            index += 64
+            s = BytesLib.toBytes32(encodedVM, index)
+            index += 64
+            v = BytesLib.toUint8(encodedVM, index) + 27
+            index += 2
+
+            signatures.append(guardianIndex, r, s, v)
+        
+        # body = BytesLib.slice(encodedVM, index, len(encodedVM) - index)
+        # vm['hash'] = keccak256(keccak256(bytes.fromhex(body)))
+
+        vm['timestamp'] = BytesLib.toUint32(encodedVM, index)
+        index += 8
+
+        vm['nonce'] = BytesLib.toUint32(encodedVM, index)
+        index += 8
+
+        vm['emitterID'] = BytesLib.toUint16(encodedVM, index)
+        index += 4
+
+        vm['emitterAddress'] = BytesLib.toBytes32(encodedVM, index)
+        index += 32
+
+        vm['sequence'] = BytesLib.toUint64(encodedVM, index)
+        index += 16
+
+        vm['consistencyLevel'] = BytesLib.toUint8(encodedVM, index)
+        index += 2
+
+        vm['payload'] = encodedVM[index:]
+
+        return vm
+
+    def verifyVMInternal(self, vm, checkHash):
+        return True, ""
+    
+    def verifyBridgeVM(self, vm) -> bool:
+        return self._state['bridgeContracts'][vm['emitterChainID']] == vm['emitterAddress']
+    
+    # TODO
+    def _parseCommonTransfer(self, encoded):
+        return None
+    
+    # TODO
+    def _truncateAddress(self, address):
+        return None
+    
+    # TODO
+    def isTransferCompleted(self, hash):
+        return False
+    
+    # TODO
+    def setTransferCompleted(self, hash):
+        return None
+    
+    # TODO
+    def TransferRedeemed(self, chainID, emitterAddress, sequence):
+        return None
+    
+    # TODO
+    def wrappedAsset(tokenChain, tokenAddress):
+        return None
