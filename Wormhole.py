@@ -1,6 +1,8 @@
 from collections import defaultdict
 from SafeERC20 import SafeERC20
 
+MAX_UINT64 = (1 << 64) - 1
+
 class Contract:
     def __init__(self):
         self.wrappedAssets = defaultdict(bool)
@@ -9,6 +11,9 @@ class Contract:
         self.msg_sender = '0x5bd1b6b7ec91eb8b21e9e7349c6d4bebf0078435'.lower()
         self.msg_value = 0
         self.finality = 0
+
+        self._state = defaultdict()
+        self._state['outstandingBridged'] = defaultdict(int)
 
         self.ERC20_Tokens = defaultdict(SafeERC20)
 
@@ -97,16 +102,16 @@ class Contract:
         return amount
 
     def bridgeOut(self, token, normalizedAmount):
-        # outstandingAmount = outstandingBridged(token)
-        # assert outstandingAmount + normalizedAmount <= MAX_UINT64, "Transfer Exceeds Max Outstanding Bridged Token Amount"
-        # setOutstandingBridge(token, outstandingAmount + normalizedAmount)
+        outstandingAmount = self.outstandingBridged(token)
+        assert outstandingAmount + normalizedAmount <= MAX_UINT64, "Transfer Exceeds Max Outstanding Bridged Token Amount"
+        self.setOutstandingBridge(token, outstandingAmount + normalizedAmount)
         return None
 
     def outstandingBridged(self, token):
-        return None
+        return self._state['outstandingBridged'][token]
 
     def setOutstandingBridge(self, token, amount):
-        return None
+        self._state['outstandingBridged'][token] = amount
 
     def logTransfer(self, tokenChain, tokenAddress, amount, recipientChain, recipient, fee, callValue, nonce):
         transfer = {'payloadID': 1, 'amount': amount, 'tokenAddress': tokenAddress, 'tokenChain': tokenChain, 'to': recipient, 'toChain': recipientChain, 'fee': fee}
