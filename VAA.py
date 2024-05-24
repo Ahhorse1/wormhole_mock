@@ -32,7 +32,8 @@ class VAA:
         hex_vaa = binascii.hexlify(b64_vaa)
         hex_string = hex_vaa.decode('ascii')
         vaa_list = [hex_string[i:i+2] for i in range(0, len(hex_string), 2)] 
-        
+        self.vaa_list = vaa_list
+
         # Header
         self.num_signers = int(vaa_list[5],16)
         self.version = int(vaa_list[0],16)
@@ -51,6 +52,9 @@ class VAA:
         self.sequence = toUint64(self.body, 42)
         self.consistencyLevel = int(self.body[50], 16)
         self.payload = ''.join(self.body[51:])
+
+        # Payload
+        # TODO
     
     def getHeader(self):
         return {'version' : self.version, 
@@ -65,6 +69,22 @@ class VAA:
                 'emitterAddress' : self.emitterAddress,
                 'sequence' : self.sequence,
                 'consistencyLevel' : self.consistencyLevel,
+                'payload' : self.payload
+                }
+    
+    def getRawHeader(self):
+        return {'version' : self.vaa_list[0], 
+                'guardianSetIndex' : ''.join(self.vaa_list[1:5]), 
+                'guardianSignatures' : self.vaa_list[5]
+                }
+    
+    def getRawBody(self):
+        return {'timestamp' : ''.join(self.body[0:4]), 
+                'nonce' : ''.join(self.body[4:8]), 
+                'emitterChain' : ''.join(self.body[8:10]),
+                'emitterAddress' : self.emitterAddress,
+                'sequence' : ''.join(self.body[42:50]),
+                'consistencyLevel' : self.body[50],
                 'payload' : self.payload
                 }
 
