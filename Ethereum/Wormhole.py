@@ -23,8 +23,6 @@ class Contract:
         self._state['outstandingBridged'] = defaultdict(int)
         self._state['bridgeContracts'] = defaultdict(int)
 
-        self._state['bridgeContracts'][]
-
         self.ERC20_Tokens = defaultdict(SafeERC20)
 
         SmarDex = SafeERC20()
