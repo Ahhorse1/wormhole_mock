@@ -27,6 +27,8 @@ def toBytes32(buffer, index):
     return ''.join(buffer[index:index+32])
 
 class VAA:
+    # https://github.com/evan-gray/vaa-dev
+    # https://vaa.dev/#/parse
     def __init__(self, vaa_string):
         b64_vaa = base64.b64decode(vaa_string)
         hex_vaa = binascii.hexlify(b64_vaa)

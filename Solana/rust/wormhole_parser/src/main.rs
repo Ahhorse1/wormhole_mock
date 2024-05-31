@@ -49,6 +49,33 @@ pub enum ConsistencyLevel {
     Finalized,
 }
 
+pub type Address = [u8; 32];
+pub type ChainID = u16;
+
+#[derive(BorshDeserialize, BorshSerialize, Default)]
+pub struct TransferWrappedData {
+    pub nonce: u32,
+    pub amount: u64,
+    pub fee: u64,
+    pub target_address: Address,
+    pub target_chain: ChainID,
+}
+
+// mhole/blob/d420251f0b801a89625dbbf0123db4ed407009a2/solana/modules/token_bridge/program/src/api/transfer.rs#L295
+
+#[derive(BorshDeserialize, BorshSerialize)]
+pub struct PostMessageData {
+    /// Unique nonce for this message
+    pub nonce: u32,
+
+    /// Message payload
+    pub payload: Vec<u8>,
+
+    /// Commitment Level required for an attestation to be produced
+    pub consistency_level: ConsistencyLevel,
+}
+
+// https://github.com/wormhole-foundation/wormhole/blob/main/solana/bridge/program/src/api/post_message.rs#82
 
 fn hex_string_to_bytes(hex_string: &str) -> Option<Vec<u8>> {
     // Ensure the string has an even number of characters
@@ -79,20 +106,61 @@ fn hex_string_to_bytes(hex_string: &str) -> Option<Vec<u8>> {
 use std::env;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    // let args: Vec<String> = env::args().collect();
 
-    if args.len() < 2 {
-        eprintln!("Missing Arguments");
-        return;
+    // if args.len() < 2 {
+    //     eprintln!("Missing Arguments");
+    //     return;
+    // }
+
+    // let hex_string = &args[1];
+    // decode_post_vaa(&hex_string);
+
+    let transfer_wrapped = "ee7c0000bdb94b440f000000000000000000000000000000000000000000000065a8f07bd9a8598e1b5b6c0a88f4779dbc0776750200";
+    let post_message = "ee7c000085000000010000000000000000000000000000000000000000000000000000000f444bb9bd000000000000000000000000576e2bed8f7b46d34016198911cdf9886f78bea7000200000000000000000000000065a8f07bd9a8598e1b5b6c0a88f4779dbc0776750002000000000000000000000000000000000000000000000000000000000000000001";
+
+    decode_transfer_wrapped(&transfer_wrapped);
+    decode_post_message(&post_message);
+
+}
+
+fn decode_post_message(hex_string: &str) {
+    if let Some(bytes) = hex_string_to_bytes(hex_string) {
+
+        let deserialized_postmsg = PostMessageData::try_from_slice(&bytes).unwrap();
+
+        println!("PostMessageData");
+        println!("| Nonce: {}", deserialized_postmsg.nonce);
+        println!("| Consistency Level: {:?}", deserialized_postmsg.consistency_level);
+        let address_string: String = deserialized_postmsg.payload.iter().map(|byte| format!("{:02x}", byte)).collect();
+        print!("| Payload: {}", address_string);
+
+    } else {
+        eprintln!("Invalid hex string!");
     }
+}
 
-    let hex_string = &args[1];
-    decode_post_vaa(&hex_string);
+fn decode_transfer_wrapped(hex_string: &str) {
+    if let Some(bytes) = hex_string_to_bytes(hex_string) {
 
+        let deserialized_payload = TransferWrappedData::try_from_slice(&bytes).unwrap();
+
+        println!("TransferWrappedData");
+        println!("| Nonce: {}", deserialized_payload.nonce);
+        println!("| Amount: {}", deserialized_payload.amount);
+        println!("| Fee: {}", deserialized_payload.fee);
+        let address_string: String = deserialized_payload.target_address.iter().map(|byte| format!("{:02x}", byte)).collect();
+        println!("| Target Address: {}", address_string);
+        println!("| Target Chain: {}", deserialized_payload.target_chain);
+
+    } else {
+        eprintln!("Invalid hex string!");
+    }
 }
 
 fn decode_post_vaa(hex_string: &str) {
     if let Some(bytes) = hex_string_to_bytes(hex_string) {
+
         let deserialized_postvaa = PostVAAData::try_from_slice(&bytes).unwrap();
 
         println!("PostVAAData");
