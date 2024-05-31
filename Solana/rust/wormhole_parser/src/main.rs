@@ -118,9 +118,11 @@ fn main() {
 
     let transfer_wrapped = "ee7c0000bdb94b440f000000000000000000000000000000000000000000000065a8f07bd9a8598e1b5b6c0a88f4779dbc0776750200";
     let post_message = "ee7c000085000000010000000000000000000000000000000000000000000000000000000f444bb9bd000000000000000000000000576e2bed8f7b46d34016198911cdf9886f78bea7000200000000000000000000000065a8f07bd9a8598e1b5b6c0a88f4779dbc0776750002000000000000000000000000000000000000000000000000000000000000000001";
+    let post_vaa = "0102000000cb36ba6300012b5802000000000000000000000000003ee18b2214aff97000d974cf647e7c347e8fa585438301000000000001850000000100000000000000000000000000000000000000000000000000000000009b019d000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20002fdcab7eb5c1b9bc0af2be72a1f5e9815e321e18f2de99cb4dc107ecc776d542f00010000000000000000000000000000000000000000000000000000000000026b1d";
 
     decode_transfer_wrapped(&transfer_wrapped);
     decode_post_message(&post_message);
+    decode_post_vaa(&post_vaa);
 
 }
 
@@ -132,8 +134,8 @@ fn decode_post_message(hex_string: &str) {
         println!("PostMessageData");
         println!("| Nonce: {}", deserialized_postmsg.nonce);
         println!("| Consistency Level: {:?}", deserialized_postmsg.consistency_level);
-        let address_string: String = deserialized_postmsg.payload.iter().map(|byte| format!("{:02x}", byte)).collect();
-        print!("| Payload: {}", address_string);
+        let payload: String = deserialized_postmsg.payload.iter().map(|byte| format!("{:02x}", byte)).collect();
+        println!("| Payload: {}", payload);
 
     } else {
         eprintln!("Invalid hex string!");
@@ -169,19 +171,12 @@ fn decode_post_vaa(hex_string: &str) {
         println!("| Timestamp: {}", deserialized_postvaa.timestamp);
         println!("| Nonce: {}", deserialized_postvaa.nonce);
         println!("| Emitter Chain: {}", deserialized_postvaa.emitter_chain);
-        println!("| Emitter Address: {:?}", deserialized_postvaa.emitter_address);
+        let emitter_address: String = deserialized_postvaa.emitter_address.iter().map(|byte| format!("{:02x}", byte)).collect();
+        println!("| Emitter Address: {}", emitter_address);
         println!("| Sequence: {}", deserialized_postvaa.sequence);
         println!("| Consistency Level: {:?}", deserialized_postvaa.consistency_level);
-        print!("| Payload: ");
-
-        let payload_bytes: &[u8] = &deserialized_postvaa.payload;
-
-        // Print the byte array in hexadecimal format
-        for byte in payload_bytes {
-            print!("{:02X} ", byte);
-        }
-        
-        print!("\n");
+        let payload: String = deserialized_postvaa.payload.iter().map(|byte| format!("{:02x}", byte)).collect();
+        println!("| Payload: {}", payload);
 
     } else {
         eprintln!("Invalid hex string!");
