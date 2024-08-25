@@ -1,4 +1,4 @@
-from VAA import VAA
+from VAA import VAA, decodePayload
 
 vaa_string = 'AQAAAAINAAOuz9Ep03HIS1T2ypAoahT/BO2UBHpRWxiA1CfnlUUKVvMnPyR+E4Eusb1JkHivpoi6mBcEUvDkGW/bOThL7hoAArNvvcthq87MTGsQHjReeIIL0o3G0Epg/kT438O3GzDtZki5wlZ5YpRbuISJlT3nB7x8fYsxNUpJFAhO1DOyHj8BA3XfOUc2I0oIbQF8waRjl27BQQJsexBmNvXyT9XWJEwoXqq5hSQ+tf/0AUuGwHQ9ae84ENBpxyQhgfLxjqm3YAoBBAlFk8Rj/3Am5ULZUZGpGuoghigwNpCH8/OQLq9KEpxYXgTVecr9yznjvlw8PeerhjSUvgjjEuoT6bMV9WWHhPYBBaJOC3wrK3Lp6fbTcLlkRxJqjLPWeu6I33a3BKSAbJtcRAdm40CWwX5t0Kgt5EadmrvIRLIiKu0w037ok9nZUdIABocfns7u1MOoYaUdozFdyd2yJauIXNtAHrhHWE7QXq2XCITt6LK3qSGex9kwZhVeQVxfbplphKDS4ecDEo3l7/UBDLx+py+3KJWOByFPE5ZSBvimJ3GL3KOARgXM13+FvZxDL4tbeil+im9nVEb2J0J7dFBSPAnIP6+6QXkGtMK2Tx8BDTItV66QzmT4wQ9Io6Is+X7xjjhWIThkoPkUVHxqcLQjId1fOs69sd1KuXRt7Fi7TTVb7+OcPh15Uwkx1U5gAH8BDkJ4qZNL3y0gd7hFBLs57NxUPMljmdgbADS2uv5M7i0icdW9AUYxkY3mJXhUlKeS40VFMBAONKnwiIxfAgO/MXsAD/U/vytJGBHNrXO/OSC/Kkc8rH9h57pzUD2gBRULRjTUW4hL9iOULd6HbjYTW9F/U+jqh1SLktILvXS70c+gQnUAEB6M8654Oi/bCoChGFc1/vfDed0n5e9geecJvXz9fIHgMQG561i9aYmhoYtaAPrwW0NV0WweUJBZr3sgD9Yxm0YBEekZvilyWm03vf1/1WiOU6HO15FBQGb8xKyUIEp9BtuWTHAEy3rRe7KfC2grX8XvxBiUK8RDw2kc3M3udKt6nv4AEjivx2qzCoyUcvDJ2GaotcyiWRbZSYfd67PdeNDtlQhyOtD3eGxqKDC8UfxdS/LiTpLVY6sTG7P3TmXm6RBzko0BY7o2y1grAQAAAgAAAAAAAAAAAAAAAD7hiyIUr/lwANl0z2R+fDR+j6WFAAAAAAABg0MBAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAmwGdAAAAAAAAAAAAAAAAwCqqObIj/o0KDlxPJ+rZCDx1bMIAAv3Kt+tcG5vAryvnKh9emBXjIeGPLemctNwQfsx3bVQvAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJrHQ=='
 actual_payload = '0102000000cb36ba6300012b5802000000000000000000000000003ee18b2214aff97000d974cf647e7c347e8fa585438301000000000001850000000100000000000000000000000000000000000000000000000000000000009b019d000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20002fdcab7eb5c1b9bc0af2be72a1f5e9815e321e18f2de99cb4dc107ecc776d542f00010000000000000000000000000000000000000000000000000000000000026b1d'
@@ -19,6 +19,8 @@ vaa_header = parsed_vaa.getHeader()
 vaa_raw_header = parsed_vaa.getRawHeader()
 vaa_body = parsed_vaa.getBody()
 vaa_raw_body = parsed_vaa.getRawBody()
+vaa_payload = parsed_vaa.getPayload()
+vaa_raw_payload = parsed_vaa.getRawPayload()
 
 print(''.join(parsed_vaa.body))
 
@@ -30,6 +32,14 @@ print("\nVAA Body:")
 for i in vaa_body.keys():
 #    print(f'{i}: {vaa_body[i]} ')
     print(f'{i} RAW: {vaa_raw_body[i]}')
+print("\nVAA Payload:")
+for i in vaa_payload.keys():
+#    print(f'{i}: {vaa_body[i]} ')
+    print(f'{i} RAW: {vaa_raw_payload[i]}')
+#print(len(vaa_body['payload']))
 
-print(len(vaa_body['payload']))
-
+test_payload = '01000000000000000000000000000000000000000000000000000000033d17c4c2000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb4800029a0d2687be7404160c7de5f4cc7f0560babfcc8039f3416cacd5acdb7eb9e7b600010000000000000000000000000000000000000000000000000000000000000000'
+print('TESTING')
+decoded = decodePayload(test_payload)
+for i in decoded:
+    print(f'{i}: {decoded[i]}')

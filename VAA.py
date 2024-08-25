@@ -21,10 +21,29 @@ def toUint64(buffer, index):
 
     return int(''.join(buffer[index:index+8]), 16)
 
+def toUint256(buffer, index):
+    assert len(buffer) >= index + 32, "toUint256 OutOfBounds"
+    
+    return int(''.join(buffer[index:index+32]), 16)
+
+
 def toBytes32(buffer, index):
     assert len(buffer) >= index + 32, "toBytes32 OutOfBounds"
 
     return ''.join(buffer[index:index+32])
+
+def decodePayload(payload_str):
+    payload = [payload_str[i:i+2] for i in range(0, len(payload_str), 2)]
+    decoded = {}
+    decoded['payloadID'] = toUint8(payload, 0)
+    decoded['amount'] = toUint256(payload, 1)
+    decoded['tokenAddress'] = ''.join(payload[33:65])
+    decoded['tokenChain'] = toUint16(payload,65)
+    decoded['recipientAddress'] = ''.join(payload[67:99])
+    decoded['toChain'] = toUint16(payload, 99)
+    decoded['fee'] = toUint256(payload, 101)
+
+    return decoded
 
 class VAA:
     # https://github.com/evan-gray/vaa-dev
@@ -57,6 +76,14 @@ class VAA:
 
         # Payload
         # TODO
+        self.payloadID = toUint8(self.body, 51)
+        self.amount = toUint256(self.body, 52)
+        self.tokenAddress = ''.join(self.body[84:116])
+        self.tokenChain = toUint16(self.body,116)
+        self.recipientAddress = ''.join(self.body[118:150])
+        self.toChain = toUint16(self.body, 150)
+        self.fee = toUint256(self.body, 152)
+
     
     def getHeader(self):
         return {'version' : self.version, 
@@ -73,7 +100,17 @@ class VAA:
                 'consistencyLevel' : self.consistencyLevel,
                 'payload' : self.payload
                 }
-    
+
+    def getPayload(self):
+        return {'payloadID' : self.payloadID, 
+            'amount' : self.amount, 
+            'tokenAddress' : self.tokenAddress,
+            'tokenChain' : self.tokenChain,
+            'recipientAddress' : self.recipientAddress,
+            'toChain' : self.toChain,
+            'fee' : self.fee
+            }
+
     def getRawHeader(self):
         return {'version' : self.vaa_list[0], 
                 'guardianSetIndex' : ''.join(self.vaa_list[1:5]), 
@@ -90,3 +127,12 @@ class VAA:
                 'payload' : self.payload
                 }
 
+    def getRawPayload(self):
+        return {'payloadID' : self.body[51], 
+            'amount' : ''.join(self.body[52:84]), 
+            'tokenAddress' : self.tokenAddress,
+            'tokenChain' : ''.join(self.body[116:118]),
+            'recipientAddress' : self.recipientAddress,
+            'toChain' : ''.join(self.body[150:152]),
+            'fee' : ''.join(self.body[152:])
+            }
